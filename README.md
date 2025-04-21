@@ -1,1 +1,3 @@
-# Intro to git, github
+# Intro to git, github, github classroom
+
+**here it is the course**
