@@ -6,6 +6,7 @@ from llama_index.core.workflow import (
     Workflow, step, StartEvent, StopEvent, Event
 )
 from llama_index.llms.ollama import Ollama
+from llama_index.llms.openai import OpenAI
 from llama_index.core.prompts import PromptTemplate
 
 
@@ -37,7 +38,10 @@ class GitCommitWorkflow(Workflow):
     def __init__(self, model_name: str = "llama3.2"):
         super().__init__()
         self.repo_root = find_repo_root()
-        self.llm = Ollama(model=model_name)
+        if model_name.startswith("gpt"):
+            self.llm = OpenAI(model=model_name)
+        else:
+            self.llm = Ollama(model=model_name)
 
     @step()
     async def get_diff(self, ev: StartEvent) -> DiffEvent:
