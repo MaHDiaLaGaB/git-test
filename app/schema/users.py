@@ -11,7 +11,7 @@ class UserCreate(UserBase):
     pass
 
 class UserUpdate(BaseModel):
-    name: Optional[str] = None
+    name: str | None = None
     email: Optional[EmailStr] = None
 
 

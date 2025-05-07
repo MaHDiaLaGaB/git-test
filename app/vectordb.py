@@ -15,7 +15,8 @@ from llama_index.embeddings.ollama import OllamaEmbedding  # Generates embedding
 from llama_index.llms.ollama import Ollama  # Language model from Ollama
 from llama_index.core.settings import Settings  # Used to configure global LlamaIndex settings
 
-
+# TODO complete
+# this is a test
 # Step 3: Define a class that watches a directory or file for changes
 class DataDirWatcher(FileSystemEventHandler):
     def __init__(self, callback):  # Accept a callback function to trigger on file change
