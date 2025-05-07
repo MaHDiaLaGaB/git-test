@@ -42,10 +42,15 @@ class GitCommitWorkflow(Workflow):
     @step()
     async def get_diff(self, ev: StartEvent) -> DiffEvent:
         """Step 1: Retrieve git diff."""
+        print("[GitCommit] Retrieving git diff...")
         output = subprocess.check_output(
             ["git", "diff", "--relative=", "."],
             cwd=self.repo_root
         ).decode().strip()
+        if not output:
+            print("[GitCommit] No changes detected.")
+        else:
+            print(f"[GitCommit] Detected changes in files:\n{output}")
         return DiffEvent(diff=output)
 
     @step()
@@ -53,38 +58,50 @@ class GitCommitWorkflow(Workflow):
         """Step 2: Generate commit message using LLM."""
         diff = ev.diff
         if not diff.strip():
-            return MessageEvent(message="No changes detected.")
+            msg = "No changes detected."
+            print(f"[GitCommit] Skipping message generation: {msg}")
+            return MessageEvent(message=msg)
+        print("[GitCommit] Generating commit message from diff...")
         prompt = (
             "Generate a concise, descriptive git commit message for the following diff:\n\n" + diff
         )
         the_prompt = PromptTemplate(prompt)
-        # Use predict to avoid chat-event schema validation issues
         msg = self.llm.predict(the_prompt)
-        return MessageEvent(message=msg.strip())
+        msg = msg.strip()
+        print(f"[GitCommit] Generated message: '{msg}'")
+        return MessageEvent(message=msg)
 
     @step()
     async def stage_changes(self, ev: MessageEvent) -> MessageEvent:
         """Step 3: Stage all changes for commit."""
         if ev.message == "No changes detected.":
+            print("[GitCommit] Nothing to stage.")
             return ev
+        print("[GitCommit] Staging all changes...")
         subprocess.check_call(["git", "add", "-A"], cwd=self.repo_root)
+        print("[GitCommit] Changes staged.")
         return ev
 
     @step()
     async def commit_changes(self, ev: MessageEvent) -> StopEvent:
         """Step 4: Commit staged changes with the generated message."""
         if ev.message == "No changes detected.":
+            print("[GitCommit] No commit created.")
             return StopEvent(result=ev.message)
+        print(f"[GitCommit] Committing changes with message: '{ev.message}'")
         subprocess.check_call(["git", "commit", "-m", ev.message], cwd=self.repo_root)
+        print("[GitCommit] Commit complete.")
         return StopEvent(result=f"Committed with message: {ev.message}")
 
 async def main(mode: str):
     workflow = GitCommitWorkflow()
     if mode == "once":
+        print("[GitCommit] Running single commit workflow...")
         result = await workflow.run()
-        print(result)
+        print(f"[GitCommit] Result: {result}")
     else:
-        last_output = None
+        print("[GitCommit] Entering watch mode (polling every 2s)...")
+        last_output = None 
         while True:
             output = subprocess.check_output(
                 ["git", "diff", "--relative=", "."],
@@ -92,8 +109,9 @@ async def main(mode: str):
             )
             if output and output != last_output:
                 last_output = output
+                print("[GitCommit] Change detected, running workflow...")
                 result = await workflow.run()
-                print(result)
+                print(f"[GitCommit] Result: {result}")
             await asyncio.sleep(2)
 
 if __name__ == "__main__":
